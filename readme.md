@@ -10,7 +10,7 @@
 - **Opened pages synchronization**: Solution will keep your opened pages between profile usages.
 - **Fingerprint Spoofing**: Spoof User-Agent, screen resolution, and other navigator parts by using [BrowserForge Fingerprints](https://github.com/BrowserForge/BrowserForge), like in paid solutions.
 - **Proxy support**: Supports proxy & proxy change for profiles. http (with/out auth) & socks5 (WITHOUT auth only)
-- **Extension Installation**: Support for extensions. Simply unpack them into `extensions` directory, like `metamask`
+- **Extension Installation**: Support for extensions. Simply create `extensions` directory in root directory of script, and unpack extension into `extensionName` in `extensions` directory, like `extensions/metamask`
 
 ## 🎓 Prerequisites
 
