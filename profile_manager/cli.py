@@ -13,7 +13,10 @@ async def run_profile_manager():
 
     async def handle_create_profile():
         name = await ainput('Profile name: ')
-        proxy_str = await ainput('Proxy (host:port:user:pass) or leave empty: ') or None
+        proxy_str: str = await ainput(
+            'Proxy (protocol:host:port:user:pass) or leave empty ('
+            'protocol is http or socks5; Socks5 does not supports user auth!): ',
+        )
         try:
             created_name = await manager.create_profile(name, proxy_str)
             print(f'Profile "{created_name}" created!')
@@ -47,7 +50,10 @@ async def run_profile_manager():
             print(f' - {name}')
 
         profile_name = await ainput('Enter profile name to change proxy: ')
-        new_proxy_str = await ainput('New Proxy (host:port:user:pass) or empty to remove: ') or None
+        new_proxy_str = await ainput(
+            'New Proxy (protocol:host:port:user:pass) or empty to remove ('
+            'protocol is http or socks5; Socks5 does not supports user auth!): ',
+        )
         try:
             await manager.update_proxy(profile_name, new_proxy_str)
             print(f'Proxy for profile "{profile_name}" updated!')

@@ -64,14 +64,17 @@ class ProfileManager:
             return None
 
         parts = proxy_str.split(':')
-        if len(parts) not in [2, 4]:
-            raise ValueError('Invalid proxy format. Use host:port or host:port:user:pass')
+        if len(parts) not in [3, 5]:
+            raise ValueError(
+                'Invalid proxy format. Use protocol:host:port or protocol:host:port:user:pass\n'
+                'Where protocol is http or socks5. Socks5 does not supports user auth!',
+            )
 
         return Proxy(
-            server=parts[0],
-            port=int(parts[1]),
-            username=parts[2] if len(parts) > 2 else None,
-            password=parts[3] if len(parts) > 3 else None
+            server=f'{parts[0]}://{parts[1]}',
+            port=int(parts[2]),
+            username=parts[3] if len(parts) > 2 else None,
+            password=parts[4] if len(parts) > 3 else None
         )
 
     async def create_profile(self, name: str, proxy_str: str | None = None) -> str:
