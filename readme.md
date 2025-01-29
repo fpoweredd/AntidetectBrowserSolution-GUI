@@ -24,8 +24,8 @@ You can download Python [here](https://www.python.org/downloads/).
 You can download the repository by cloning it to your system and installing the necessary dependencies:
 
 ```bash
-git clone replaceme
-cd replaceme
+git clone https://github.com/MaestroOfAutomation/AntidetectBrowserSolution.git
+cd AntidetectBrowserSolution
 ```
 
 ## Quick Start 📚
