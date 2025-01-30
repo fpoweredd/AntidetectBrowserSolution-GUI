@@ -46,6 +46,9 @@ class ProfileManager:
 
     @staticmethod
     def get_extensions_patches() -> str:
+        if not EXTENSIONS_PATH.exists():
+            return ''
+
         extension_dirs = [
             str(extension_path.resolve())
             for extension_path in EXTENSIONS_PATH.iterdir()
