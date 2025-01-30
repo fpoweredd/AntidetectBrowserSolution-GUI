@@ -13,10 +13,12 @@ from profile_manager.structures import Profile, Proxy
 
 logger = logging.getLogger(__name__)
 
-PROFILES_PATH = Path('user_data/profiles.pkl')
+USER_DATA_PATH = Path(__file__).parent.parent / 'user_data'
+
+PROFILES_PATH = USER_DATA_PATH / 'profiles.pkl'
 PROFILES_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-EXTENSIONS_PATH = Path('extensions')
+EXTENSIONS_PATH = Path(__file__).parent.parent / 'extensions'
 
 
 class ProfileManager:
@@ -134,7 +136,7 @@ class ProfileManager:
         try:
             profile = self.profiles[profile_name]
             async with async_playwright() as playwright:
-                user_data_path = f'user_data/{profile_name}'
+                user_data_path = USER_DATA_PATH / 'profile_name'
 
                 proxy_config = None
                 if profile.proxy:
