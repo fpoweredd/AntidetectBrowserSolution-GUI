@@ -136,7 +136,7 @@ class ProfileManager:
         try:
             profile = self.profiles[profile_name]
             async with async_playwright() as playwright:
-                user_data_path = USER_DATA_PATH / 'profile_name'
+                user_data_path = USER_DATA_PATH / profile_name
 
                 proxy_config = None
                 if profile.proxy:
