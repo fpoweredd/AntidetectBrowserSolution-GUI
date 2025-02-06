@@ -1,14 +1,15 @@
 import asyncio
-from asyncio import Task
 import logging
-from pathlib import Path
 import pickle
+from asyncio import Task
+from pathlib import Path
 
 from browserforge.fingerprints import FingerprintGenerator
 from browserforge.headers import Browser
-from browserforge.injectors.utils import InjectFunction
-from patchright.async_api import Page, async_playwright
+from browserforge.injectors.utils import InjectFunction, only_injectable_headers
+from playwright.async_api import Page, async_playwright
 
+from profile_manager.path import StealthPlaywrightPatcher
 from profile_manager.structures import Profile, Proxy
 
 logger = logging.getLogger(__name__)
@@ -19,6 +20,9 @@ PROFILES_PATH = USER_DATA_PATH / 'profiles.pkl'
 PROFILES_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 EXTENSIONS_PATH = Path(__file__).parent.parent / 'extensions'
+
+
+StealthPlaywrightPatcher().apply_patches()
 
 
 class ProfileManager:
@@ -156,13 +160,13 @@ class ProfileManager:
                         'width': profile.fingerprint.screen.width,
                         'height': profile.fingerprint.screen.height
                     },
-                    extra_http_headers={
+                    extra_http_headers=only_injectable_headers(headers={
                         'Accept-Language': profile.fingerprint.headers.get(
                             'Accept-Language',
                             'en-US,en;q=0.9'
                         ),
-                        **profile.fingerprint.headers
-                    },
+                        **profile.fingerprint.headers,
+                    }, browser_name='chrome'),
                     proxy=proxy_config,
                     ignore_default_args=[
                         '--enable-automation',

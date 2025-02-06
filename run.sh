@@ -9,23 +9,19 @@ source venv/bin/activate
 
 git pull
 
-if [ ! -f "venv/installed" ]; then
-    if [ -f "requirements.txt" ]; then
-		echo "Installing wheel for faster installing"
-		pip3 install wheel
-        echo "Installing dependencies..."
-        pip3 install -r requirements.txt
-        touch venv/installed
-    else
-        echo "requirements.txt not found, skipping dependency installation."
-
-    fi
+if [ -f "requirements.txt" ]; then
+echo "Installing wheel for faster installing"
+pip3 install wheel
+    echo "Installing dependencies..."
+    pip3 install -r requirements.txt
+    touch venv/installed
 else
-    echo "Dependencies already installed, skipping installation."
+    echo "requirements.txt not found, skipping dependency installation."
+
 fi
 
-echo "Installing Patchright..."
-patchright install
+echo "Installing Playwright..."
+playwright install
 
 echo "Starting maestro anti detection solution..."
 python3 main.py
