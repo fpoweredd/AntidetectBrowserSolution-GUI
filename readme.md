@@ -15,6 +15,19 @@
   - One-click proxy rotation
 - **Extension Installation**: Support for extensions. Simply create `extensions` directory in root directory of script, and unpack extension into `extensionName` in `extensions` directory, like `extensions/metamask`
 
+## Configuration
+
+### ASocks API Setup
+To use proxy rotation features, you need to configure your ASocks API key:
+1. Go to Settings in the main window
+2. Enter your ASocks API key
+3. The default domain is "https://api.asocks.com"
+
+## Screenshots
+
+![Profile Creation](example/image.png)
+![Management](example/image2.png)
+
 ## 🎓 Prerequisites
 
 ### Make sure you have `Python 3` installed!  
