@@ -20,10 +20,10 @@ if exist requirements.txt (
     echo requirements.txt not found, skipping dependency installation.
 )
 
-echo Installing Playwright...
-playwright install
+@REM echo Installing Playwright...
+@REM playwright install
 
 echo Starting maestro anti detection solution...
-python main.py
+python gui.py
 
 pause

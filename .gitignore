@@ -1,5 +1,5 @@
 user_data/
 venv/
+logs/
 .DS_Store
-.idea/
 *.pyc

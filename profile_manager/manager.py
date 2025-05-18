@@ -1,18 +1,17 @@
 import asyncio
-import logging
 import pickle
 from asyncio import Task
 from pathlib import Path
+from typing import Union, List, Dict, Optional
 
 from browserforge.fingerprints import FingerprintGenerator
 from browserforge.headers import Browser
 from browserforge.injectors.utils import InjectFunction, only_injectable_headers
+from loguru import logger
 from playwright.async_api import Page, async_playwright
 
 from profile_manager.path import StealthPlaywrightPatcher
-from profile_manager.structures import Profile, Proxy
-
-logger = logging.getLogger(__name__)
+from profile_manager.structures import Profile, Proxy, ASocksSettings
 
 USER_DATA_PATH = Path(__file__).parent.parent / 'user_data'
 
@@ -21,14 +20,13 @@ PROFILES_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 EXTENSIONS_PATH = Path(__file__).parent.parent / 'extensions'
 
-
 StealthPlaywrightPatcher().apply_patches()
-
 
 class ProfileManager:
     def __init__(self):
         self.profiles: dict[str, Profile] = {}
         self.running_tasks: dict[str, Task] = {}
+        self.asocks_settings: Optional[ASocksSettings] = None
 
         self.load_profiles()
 
@@ -36,9 +34,14 @@ class ProfileManager:
         try:
             if PROFILES_PATH.exists():
                 with open(PROFILES_PATH, 'rb') as f:
-                    self.profiles = pickle.load(f)
-        except Exception:
-            logger.exception('Error loading profiles')
+                    data = pickle.load(f)
+                    if isinstance(data, tuple):
+                        self.profiles, self.asocks_settings = data
+                    else:
+                        self.profiles = data
+                        self.asocks_settings = None
+        except Exception as e:
+            logger.exception(f'Error loading profiles: {e}')
 
     def get_extensions_args(self) -> list[str]:
         extensions_patches: str = self.get_extensions_patches()
@@ -64,11 +67,14 @@ class ProfileManager:
         return ','.join(extension_dirs)
 
     def save_profiles(self):
-        with open(PROFILES_PATH, 'wb') as f:
-            pickle.dump(self.profiles, f)
+        try:
+            with open(PROFILES_PATH, 'wb') as f:
+                pickle.dump((self.profiles, self.asocks_settings), f)
+        except Exception as e:
+            logger.exception(f'Error saving profiles: {e}')
 
     @staticmethod
-    def parse_proxy(proxy_str: str | None) -> Proxy | None:
+    def parse_proxy(proxy_str: Union[str, None]) -> Union[Proxy, None]:
         if not proxy_str:
             return None
 
@@ -82,11 +88,11 @@ class ProfileManager:
         return Proxy(
             server=f'{parts[0]}://{parts[1]}',
             port=int(parts[2]),
-            username=parts[3] if len(parts) > 2 else None,
-            password=parts[4] if len(parts) > 3 else None
+            username=parts[3] if len(parts) > 3 else None,
+            password=parts[4] if len(parts) > 4 else None
         )
 
-    async def create_profile(self, name: str, proxy_str: str | None = None) -> str:
+    async def create_profile(self, name: str, proxy_str: Union[str, None] = None) -> str:
         if name in self.profiles:
             raise ValueError(f'Profile "{name}" already exists')
 
@@ -94,12 +100,13 @@ class ProfileManager:
 
         fingerprint = FingerprintGenerator(
             browser=[
-                Browser(name='chrome', min_version=130, max_version=130),
+                Browser(name='chrome', min_version=130, max_version=135),
             ],
-            os=('windows', 'macos'),
+            # os=('windows', 'macos'),
+            os=('windows',),
             device='desktop',
             locale=('en-US',),
-            http_version=2,
+            http_version=2
         ).generate()
 
         self.profiles[name] = Profile(fingerprint=fingerprint, proxy=proxy)
@@ -116,7 +123,7 @@ class ProfileManager:
         task = asyncio.create_task(self._run_browser(profile_name))
         self.running_tasks[profile_name] = task
 
-    async def update_proxy(self, profile_name: str, proxy_str: str | None):
+    async def update_proxy(self, profile_name: str, proxy_str: Union[str, None]):
         if profile_name not in self.profiles:
             raise ValueError('Profile not found')
 
@@ -133,8 +140,8 @@ class ProfileManager:
         await asyncio.sleep(delay)
         try:
             await page.close()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.exception(f'Error closing page: {e}')
 
     async def _run_browser(self, profile_name: str):
         try:
@@ -219,3 +226,55 @@ class ProfileManager:
 
     def get_profile_status(self, profile_name: str) -> str:
         return 'running' if self.is_profile_running(profile_name) else 'stopped'
+
+    def delete_profile(self, profile_name: str):
+        """Удаляет профиль и его данные"""
+        if profile_name not in self.profiles:
+            raise ValueError('Profile not found')
+
+        # Останавливаем профиль если запущен
+        if self.is_profile_running(profile_name):
+            task = self.running_tasks.get(profile_name)
+            if task:
+                task.cancel()
+                asyncio.run(asyncio.gather(task, return_exceptions=True))
+
+        # Удаляем профиль из словаря
+        del self.profiles[profile_name]
+
+        # Удаляем директорию с данными профиля
+        user_data_path = USER_DATA_PATH / profile_name
+        if user_data_path.exists():
+            import shutil
+            shutil.rmtree(user_data_path)
+
+        # Сохраняем изменения
+        self.save_profiles()
+
+    def update_profile_name(self, old_name: str, new_name: str):
+        """Обновляет имя профиля"""
+        if old_name not in self.profiles:
+            raise ValueError('Profile not found')
+            
+        if new_name in self.profiles:
+            raise ValueError(f'Profile "{new_name}" already exists')
+            
+        # Останавливаем профиль если запущен
+        if self.is_profile_running(old_name):
+            task = self.running_tasks.get(old_name)
+            if task:
+                task.cancel()
+                asyncio.run(asyncio.gather(task, return_exceptions=True))
+                
+        # Переименовываем директорию
+        old_path = USER_DATA_PATH / old_name
+        new_path = USER_DATA_PATH / new_name
+        if old_path.exists():
+            import shutil
+            shutil.move(old_path, new_path)
+            
+        # Обновляем профиль в словаре
+        self.profiles[new_name] = self.profiles.pop(old_name)
+        
+        # Сохраняем изменения
+        self.save_profiles()

@@ -1,12 +1,11 @@
 import asyncio
-import logging
 from aioconsole import ainput
+from loguru import logger
 
 from profile_manager.manager import ProfileManager
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
-
+# Настраиваем логгер
+logger.add("logs/browser.log", rotation="30 days", retention="7 days", level="INFO")
 
 async def run_profile_manager():
     manager = ProfileManager()
@@ -91,7 +90,9 @@ async def run_profile_manager():
                 else:
                     print('Invalid choice')
             except (KeyboardInterrupt, EOFError):
-                print("\nExiting...")
+                logger.info("Exiting...")
                 return
+            except Exception as e:
+                logger.exception(f"Unexpected error: {e}")
 
     await input_handler()

@@ -1,8 +1,9 @@
 import re
 import site
 import sys
-import logging
 from pathlib import Path
+from typing import Union
+from loguru import logger
 
 CONTEXT_RE_PATTERN = re.compile(
     r'.*\s_context?\s*\(world\)\s*\{(?:[^}{]+|\{(?:[^}{]+|\{[^}{]*\})*\})*\}'
@@ -51,7 +52,6 @@ class StealthPlaywrightPatcher:
         """
         Initializes the logger and determines the path to the site-packages directory.
         """
-        self.logger = logging.getLogger(self.__class__.__name__)
         self.site_packages_path = self._find_site_packages()
 
     def _find_site_packages(self) -> Path:
@@ -63,7 +63,7 @@ class StealthPlaywrightPatcher:
             raise RuntimeError("Unable to determine the site-packages path.")
         return Path(packages[0] if sys.platform != "win32" else packages[1])
 
-    def _generate_path(self, filename: str, subfolder: str | None = "chromium") -> Path:
+    def _generate_path(self, filename: str, subfolder: Union[str, None] = "chromium") -> Path:
         """
         Constructs the full path to Playwright files (driver/package/lib/server).
         Subfolder can be specified if needed.
@@ -75,15 +75,18 @@ class StealthPlaywrightPatcher:
         """
         Replaces 'old' with 'new' only if 'new' is not already present in the file.
         """
-        with open(target, encoding="utf-8") as f:
-            content = f.read()
-        if new not in content:
-            updated_content = content.replace(old, new)
-            with open(target, "w", encoding="utf-8") as fw:
-                fw.write(updated_content)
-            self.logger.info(f"Replaced '{old}' with '{new}' in {target}")
-        else:
-            self.logger.info(f"Skipping: '{new}' is already present in {target}")
+        try:
+            with open(target, encoding="utf-8") as f:
+                content = f.read()
+            if new not in content:
+                updated_content = content.replace(old, new)
+                with open(target, "w", encoding="utf-8") as fw:
+                    fw.write(updated_content)
+                logger.info(f"Replaced '{old}' with '{new}' in {target}")
+            else:
+                logger.info(f"Skipping: '{new}' is already present in {target}")
+        except Exception as e:
+            logger.exception(f"Error replacing content in {target}: {e}")
 
     def _patch_runtime_methods(self) -> None:
         """
@@ -118,18 +121,21 @@ class StealthPlaywrightPatcher:
         2) Updates _onClearLifecycle to reset the isolated context.
         """
         frames_path = self._generate_path("frames.js", subfolder=None)
-        with open(frames_path, encoding="utf-8") as f:
-            frames_code = f.read()
-        if "_isolatedContext = undefined" not in frames_code:
-            frames_code = CONTEXT_RE_PATTERN.sub(CONTEXT_REPLACEMENT_CODE, frames_code, count=1)
-            frames_code = ON_CLEAR_PATTERN.sub(ON_CLEAR_REPLACEMENT_CODE, frames_code, count=1)
-            with open(frames_path, "w", encoding="utf-8") as fw:
-                fw.write(frames_code)
-            self.logger.info(f"File {frames_path} was successfully patched.")
-        else:
-            self.logger.info(
-                f"File {frames_path} already contains the necessary modifications. Skipping...",
-            )
+        try:
+            with open(frames_path, encoding="utf-8") as f:
+                frames_code = f.read()
+            if "_isolatedContext = undefined" not in frames_code:
+                frames_code = CONTEXT_RE_PATTERN.sub(CONTEXT_REPLACEMENT_CODE, frames_code, count=1)
+                frames_code = ON_CLEAR_PATTERN.sub(ON_CLEAR_REPLACEMENT_CODE, frames_code, count=1)
+                with open(frames_path, "w", encoding="utf-8") as fw:
+                    fw.write(frames_code)
+                logger.info(f"File {frames_path} was successfully patched.")
+            else:
+                logger.info(
+                    f"File {frames_path} already contains the necessary modifications. Skipping...",
+                )
+        except Exception as e:
+            logger.exception(f"Error patching context in {frames_path}: {e}")
 
     def apply_patches(self) -> None:
         """
@@ -137,7 +143,7 @@ class StealthPlaywrightPatcher:
         1) Comments out Runtime.enable calls.
         2) Configures the isolated context in frames.js.
         """
-        self.logger.info("[PATCH] Starting stealth modification of the Playwright driver...")
+        logger.info("[PATCH] Starting stealth modification of the Playwright driver...")
         self._patch_runtime_methods()
         self._patch_context()
-        self.logger.info("[PATCH] All necessary changes have been applied.")
+        logger.info("[PATCH] All necessary changes have been applied.")
